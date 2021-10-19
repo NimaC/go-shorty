@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  goshorty:
+    image: nimachi/goshorty
+    container_name: goshorty
+    networks:
+      - goshorty
+    environment:
+      goshortyhost: 0.0.0.0
+      goshortyport: 1337
+      redishost: localhost
+      redisport: 1338
+      redispw: ""
+    ports:
+      - '1337:1337'
+    depends_on:
+      - redis
+  redis:
+    image: "redis:latest"
+    ports:
+      - '1338:1338'
+    networks:
+      - goshorty
+
+
+networks:
+  goshorty:
+    driver: bridge

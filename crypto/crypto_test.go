@@ -1,4 +1,4 @@
-package myCrypto
+package crypto
 
 import (
 	"regexp"

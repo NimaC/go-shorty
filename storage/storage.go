@@ -3,9 +3,8 @@ package storage
 import "time"
 
 type Service interface {
-	Save(string, time.Time) (string, error)
-	Load(string) (string, error)
-	LoadInfo(string) (*Item, error)
+	Save(string, string, time.Time) error
+	Load(string) (*Item, error)
 	Close() error
 }
 
