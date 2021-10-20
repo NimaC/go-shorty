@@ -1,17 +1,20 @@
 package storage
 
-import "time"
+import (
+	"io"
+	"time"
+)
 
 type Service interface {
-	Save(string, string, time.Time) error
+	io.Closer
+	Save(string, string, time.Time, int) error
 	Load(string) (*Item, error)
-	Close() error
-	IncrementVisits(*Item) error
+	IsUsed(string) bool
 }
 
 type Item struct {
-	Id      string `json:"id" redis:"id"`
-	URL     string `json:"url" redis:"url"`
-	Expires string `json:"expires" redis:"expires"`
-	Visits  int    `json:"visits" redis:"visits"`
+	Id      string    `json:"id" redis:"id"`
+	URL     string    `json:"url" redis:"url"`
+	Expires time.Time `json:"expires" redis:"expires"`
+	Visits  int       `json:"visits" redis:"visits"`
 }

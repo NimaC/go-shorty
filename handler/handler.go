@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"time"
@@ -22,12 +23,15 @@ type handler struct {
 	storage storage.Service
 }
 
+var layoutISO string = "2006-01-02T15:04:05"
+
 func New(host string, storage storage.Service) *gin.Engine {
 	router := gin.Default()
 
 	h := handler{host, storage}
 	router.POST("/encode/", responseHandler(h.encode))
 	router.GET("/:shortLink", h.redirect)
+	router.GET("/loadinfo/:shortLink", responseHandler(h.loadInfo))
 	return router
 }
 
@@ -43,14 +47,14 @@ func responseHandler(h func(c *gin.Context) (interface{}, int, error)) gin.Handl
 
 func (h handler) encode(ctx *gin.Context) (interface{}, int, error) {
 	var input struct {
-		URL     string `json:"url"`
-		Expires string `json:"expires"`
+		URL     string    `json:"url"`
+		Expires time.Time `json:"expires"`
 	}
 
 	rawData, err := ctx.GetRawData()
 
 	if err != nil {
-		panic(err)
+		return nil, http.StatusInternalServerError, err
 	}
 
 	if err := json.Unmarshal(rawData, &input); err != nil {
@@ -63,15 +67,11 @@ func (h handler) encode(ctx *gin.Context) (interface{}, int, error) {
 		return nil, http.StatusBadRequest, fmt.Errorf("Invalid url")
 	}
 
-	layoutISO := "2006-01-02 15:04:05"
-	expires, err := time.Parse(layoutISO, input.Expires)
-	if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("Invalid expiration date")
-	}
-
 	id := crypto.Encode([]byte(uri.String()))
-
-	err = h.storage.Save(id, uri.String(), expires)
+	if h.storage.IsUsed(id) {
+		return nil, http.StatusBadRequest, fmt.Errorf("ID Collision. URL (probably) already in Redis DB")
+	}
+	err = h.storage.Save(id, uri.String(), input.Expires, 0)
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("could not store in database: %v", err)
 	}
@@ -86,6 +86,15 @@ func (h handler) encode(ctx *gin.Context) (interface{}, int, error) {
 	return u.String(), http.StatusCreated, nil
 }
 
+func (h handler) loadInfo(ctx *gin.Context) (interface{}, int, error) {
+	code := ctx.Param("shortLink")
+	item, err := h.storage.Load(code)
+	if err != nil {
+		return nil, http.StatusNotFound, err
+	}
+	return item, http.StatusOK, nil
+}
+
 func (h handler) redirect(ctx *gin.Context) {
 	code := ctx.Param("shortLink")
 	item, err := h.storage.Load(code)
@@ -93,9 +102,11 @@ func (h handler) redirect(ctx *gin.Context) {
 		ctx.JSON(http.StatusNotFound, response{Data: nil, Success: err == nil})
 		return
 	}
-	err = h.storage.IncrementVisits(item)
+	newVisits := item.Visits + 1
+	err = h.storage.Save(item.Id, item.URL, item.Expires, newVisits)
 	if err != nil {
-		fmt.Errorf("could not increment visit count")
+		log.Println(err)
 	}
+
 	ctx.Redirect(http.StatusMovedPermanently, item.URL)
 }
