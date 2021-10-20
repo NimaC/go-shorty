@@ -6,6 +6,7 @@ type Service interface {
 	Save(string, string, time.Time) error
 	Load(string) (*Item, error)
 	Close() error
+	IncrementVisits(*Item) error
 }
 
 type Item struct {

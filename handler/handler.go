@@ -49,7 +49,7 @@ func (h handler) encode(ctx *gin.Context) (interface{}, int, error) {
 
 	rawData, err := ctx.GetRawData()
 
-	if err == nil {
+	if err != nil {
 		panic(err)
 	}
 
@@ -73,7 +73,7 @@ func (h handler) encode(ctx *gin.Context) (interface{}, int, error) {
 
 	err = h.storage.Save(id, uri.String(), expires)
 	if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("Could not store in database: %v", err)
+		return nil, http.StatusInternalServerError, fmt.Errorf("could not store in database: %v", err)
 	}
 
 	u := url.URL{
@@ -86,25 +86,16 @@ func (h handler) encode(ctx *gin.Context) (interface{}, int, error) {
 	return u.String(), http.StatusCreated, nil
 }
 
-func (h handler) decode(ctx *gin.Context) (interface{}, int, error) {
-	code := ctx.Param("name")
-
-	model, err := h.storage.Load(code)
-	if err != nil {
-		return nil, http.StatusNotFound, fmt.Errorf("URL not found")
-	}
-
-	return model, http.StatusOK, nil
-}
-
 func (h handler) redirect(ctx *gin.Context) {
-	code := ctx.Param("name")
-
+	code := ctx.Param("shortLink")
 	item, err := h.storage.Load(code)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, response{Data: nil, Success: err == nil})
 		return
 	}
-
+	err = h.storage.IncrementVisits(item)
+	if err != nil {
+		fmt.Errorf("could not increment visit count")
+	}
 	ctx.Redirect(http.StatusMovedPermanently, item.URL)
 }

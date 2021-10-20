@@ -9,9 +9,9 @@ import (
 )
 
 func main() {
-	host, port := os.Getenv("shortyhost"), os.Getenv("shortyport")
+	host, port := os.Getenv("SHORTY_HOST"), os.Getenv("SHORTY_PORT")
 	if host == "" || port == "" {
-		log.Fatal("set shortyhost, shortyport in environment variables")
+		log.Fatal("set SHORTY_HOST, SHORTY_PORT in environment variables")
 	}
 	service, err := storage.New()
 	if err != nil {

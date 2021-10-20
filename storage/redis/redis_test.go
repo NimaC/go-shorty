@@ -20,7 +20,7 @@ func TestSaveLoad(t *testing.T) {
 	if err != nil {
 		t.Errorf("Redis Init failed: %q", err)
 	}
-	err = service.Save("123", url, time.Now())
+	err = service.Save("123", url, time.Now().Add(time.Minute*time.Duration(1)))
 	if err != nil {
 		t.Errorf("Redis Save failed: %q", err)
 	}
